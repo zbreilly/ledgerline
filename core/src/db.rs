@@ -162,15 +162,50 @@ fn has_column(conn: &Connection, table: &str, col: &str) -> Result<bool> {
     Ok(names.iter().any(|n| n == col))
 }
 
+/// Creates the folders a new database needs, for the owner only. Folders that already exist
+/// are left exactly as they are.
+fn create_private_dirs(dir: &Path) -> std::io::Result<()> {
+    let mut b = std::fs::DirBuilder::new();
+    b.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        b.mode(0o700);
+    }
+    b.create(dir)
+}
+
+/// Makes a database this app has just created readable and writable by its owner only: it
+/// holds financial data, and the default mode would let other accounts on the computer read
+/// it wherever the folder allows. SQLite gives the -wal and -shm files the database's mode,
+/// so ones made later match.
+fn make_private(path: &str) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        for suffix in ["", "-wal", "-shm"] {
+            let _ = std::fs::set_permissions(format!("{path}{suffix}"), std::fs::Permissions::from_mode(0o600));
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = path;
+}
+
 pub fn open(path: &str) -> Result<Connection> {
+    // Only a file this call creates is locked down. An existing database keeps whatever
+    // permissions its owner gave it (it may be shared on purpose).
+    let is_new = !Path::new(path).exists();
     if let Some(parent) = Path::new(path).parent() {
         if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)?;
+            create_private_dirs(parent)?;
         }
     }
     let conn = Connection::open(path)?;
     conn.busy_timeout(Duration::from_secs(5))?;
     conn.query_row("PRAGMA journal_mode = WAL", [], |_| Ok(()))?;
+    if is_new {
+        make_private(path);
+    }
     conn.execute_batch("PRAGMA foreign_keys = ON;")?;
     conn.execute_batch(SCHEMA)?;
     for (table, col, sql) in MIGRATIONS {
@@ -310,4 +345,46 @@ pub fn upsert_defaults(conn: &Connection) -> Result<(u32, u32)> {
         }
     }
     Ok((created, subs_created))
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    fn mode(p: &Path) -> u32 {
+        std::fs::metadata(p).unwrap().permissions().mode() & 0o777
+    }
+
+    #[test]
+    fn a_new_database_is_private_to_its_owner() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join("made").join("by-the-app");
+        let path = folder.join("t.db");
+        let conn = open(path.to_str().unwrap()).unwrap();
+        assert_eq!(mode(&path), 0o600);
+        // The write-ahead files exist while the database is open, and match it.
+        for suffix in ["-wal", "-shm"] {
+            let side = folder.join(format!("t.db{suffix}"));
+            assert!(side.exists(), "{suffix}");
+            assert_eq!(mode(&side), 0o600, "{suffix}");
+        }
+        assert_eq!(mode(&folder), 0o700);
+        assert_eq!(mode(folder.parent().unwrap()), 0o700);
+        drop(conn);
+    }
+
+    #[test]
+    fn an_existing_database_and_folder_keep_their_permissions() {
+        let dir = tempfile::tempdir().unwrap();
+        let folder = dir.path().join("shared");
+        std::fs::create_dir(&folder).unwrap();
+        std::fs::set_permissions(&folder, std::fs::Permissions::from_mode(0o750)).unwrap();
+        let path = folder.join("t.db");
+        drop(open(path.to_str().unwrap()).unwrap());
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o640)).unwrap();
+        drop(open(path.to_str().unwrap()).unwrap());
+        assert_eq!(mode(&path), 0o640);
+        assert_eq!(mode(&folder), 0o750);
+    }
 }

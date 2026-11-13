@@ -1,9 +1,11 @@
 //! AI categorization by running a local CLI: Anthropic's `claude` or OpenAI's `codex`. Nothing else.
 //! The prompt contains text from bank files, so every CLI runs with its tools off, in an empty
 //! temporary folder, and no shell is involved.
+//! The prompt is written to the CLI's standard input and is never a command-line argument:
+//! arguments can be read by every account on the computer (`ps`) while the CLI runs.
 //! Nothing here holds the database lock; callers build prompts first and apply results after.
 
-use std::io::Read;
+use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -33,8 +35,9 @@ pub fn status(settings: &AppSettings) -> AiStatus {
 pub const PROVIDERS: &[&str] = &["claude", "codex"];
 
 /// Builds the CLI call. Every provider runs with its tools off (or in its read-only mode)
-/// so text from a bank file can't make it read files or run commands.
-fn build_command(settings: &AppSettings, prompt: &str) -> Result<Command> {
+/// so text from a bank file can't make it read files or run commands. The prompt is not part
+/// of the call; `exec` feeds it to the CLI on standard input.
+fn build_command(settings: &AppSettings) -> Result<Command> {
     let provider = settings.ai_provider.as_str();
     let model = settings.ai_model.trim();
     if model.starts_with('-') {
@@ -48,7 +51,8 @@ fn build_command(settings: &AppSettings, prompt: &str) -> Result<Command> {
             if !model.is_empty() {
                 c.args(["--model", model]);
             }
-            c.args(["-p", prompt, "--output-format", "text"]);
+            // -p with no prompt reads it from standard input.
+            c.args(["-p", "--output-format", "text"]);
             c
         }
         "codex" => {
@@ -58,7 +62,8 @@ fn build_command(settings: &AppSettings, prompt: &str) -> Result<Command> {
             if !model.is_empty() {
                 c.args(["-m", model]);
             }
-            c.arg(prompt);
+            // "-" in place of the prompt: read it from standard input.
+            c.arg("-");
             c
         }
         other => return err(format!("Unknown AI provider \"{other}\". Choose one in Settings.")),
@@ -90,18 +95,27 @@ impl Drop for WorkDir {
 }
 
 pub fn run(settings: &AppSettings, prompt: &str) -> Result<String> {
-    let cmd = build_command(settings, prompt)?;
-    exec(cmd, &settings.ai_provider, settings.ai_timeout_sec)
+    let cmd = build_command(settings)?;
+    exec(cmd, prompt, &settings.ai_provider, settings.ai_timeout_sec)
 }
 
-/// Runs the CLI in an empty private folder and returns what it printed.
-fn exec(mut cmd: Command, provider: &str, timeout_sec: u32) -> Result<String> {
+/// Runs the CLI in an empty private folder, gives it `input` on standard input, and returns
+/// what it printed.
+fn exec(mut cmd: Command, input: &str, provider: &str, timeout_sec: u32) -> Result<String> {
     let work = WorkDir::new()?;
     cmd.current_dir(&work.0);
-    cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = cmd.spawn().map_err(|e| crate::error::LedgerError::Message {
         msg: format!("Could not start the {provider} CLI: {e}. Check that it is installed and on your PATH."),
     })?;
+
+    // Write the input on its own thread, then close the pipe so the CLI sees the end of it.
+    // A CLI that quits without reading everything is reported through its exit status below.
+    let mut si = child.stdin.take().unwrap();
+    let input = input.as_bytes().to_vec();
+    let in_t = std::thread::spawn(move || {
+        let _ = si.write_all(&input);
+    });
 
     // Drain pipes on threads so a chatty CLI can't block on a full pipe.
     let mut so = child.stdout.take().unwrap();
@@ -129,6 +143,7 @@ fn exec(mut cmd: Command, provider: &str, timeout_sec: u32) -> Result<String> {
         }
         std::thread::sleep(Duration::from_millis(100));
     };
+    let _ = in_t.join();
     let stdout = String::from_utf8_lossy(&out_t.join().unwrap_or_default()).to_string();
     let stderr = String::from_utf8_lossy(&err_t.join().unwrap_or_default()).to_string();
     if !status.success() {
@@ -186,10 +201,10 @@ mod tests {
 
     #[test]
     fn clis_run_with_tools_off() {
-        let claude = argv(&build_command(&settings("claude"), "hi").unwrap());
+        let claude = argv(&build_command(&settings("claude")).unwrap());
         assert_eq!(&claude[..3], ["claude", "--tools", ""]);
         assert!(claude.contains(&"--strict-mcp-config".to_string()));
-        let codex = argv(&build_command(&settings("codex"), "hi").unwrap());
+        let codex = argv(&build_command(&settings("codex")).unwrap());
         assert!(codex.windows(2).any(|w| w == ["--sandbox", "read-only"]));
         assert!(codex.contains(&"--skip-git-repo-check".to_string()));
     }
@@ -197,19 +212,42 @@ mod tests {
     #[test]
     fn only_claude_and_codex_are_run() {
         for other in ["zcode", "opencode", "custom", "something-else", ""] {
-            let e = build_command(&settings(other), "hi").unwrap_err();
+            let e = build_command(&settings(other)).unwrap_err();
             assert!(e.to_string().contains("Unknown AI provider"), "{other}");
         }
         let mut s = settings("claude");
         s.ai_model = "--dangerously-skip-permissions".into();
-        assert!(build_command(&s, "hi").is_err());
+        assert!(build_command(&s).is_err());
+    }
+
+    /// Arguments are visible to every account on the computer, so the prompt must not be one.
+    #[test]
+    fn the_prompt_goes_in_on_stdin_not_as_an_argument() {
+        // Each CLI is told to read standard input: claude by -p with nothing after it, codex by "-".
+        let claude = argv(&build_command(&settings("claude")).unwrap());
+        assert_eq!(&claude[claude.len() - 3..], ["-p", "--output-format", "text"]);
+        let codex = argv(&build_command(&settings("codex")).unwrap());
+        assert_eq!(codex.last().unwrap(), "-");
+
+        // And what is written there arrives whole, including more than a pipe holds at once.
+        let prompt = format!("ACME CORP | 12.00\n{}", "x".repeat(300_000));
+        let out = exec(Command::new("/bin/cat"), &prompt, "test", 30).unwrap();
+        assert_eq!(out, prompt);
+    }
+
+    #[test]
+    fn a_cli_that_ignores_its_input_still_finishes() {
+        let mut c = Command::new("/bin/sh");
+        c.args(["-c", "echo done"]);
+        let out = exec(c, &"x".repeat(300_000), "test", 30).unwrap();
+        assert_eq!(out.trim(), "done");
     }
 
     #[test]
     fn runs_in_an_empty_private_folder_that_is_removed() {
         let mut c = Command::new("/bin/sh");
         c.args(["-c", "pwd; ls -A | wc -l"]);
-        let out = exec(c, "test", 30).unwrap();
+        let out = exec(c, "", "test", 30).unwrap();
         let mut lines = out.lines();
         let dir = lines.next().unwrap().to_string();
         assert!(dir.contains("ledgerline-ai-"), "{dir}");

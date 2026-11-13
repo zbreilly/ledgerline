@@ -23,7 +23,8 @@
 - Opening a CSV with the app (Dock drop or Open With) goes straight to the import preview.
 - AI Sort only runs Anthropic's `claude` CLI or OpenAI's `codex` CLI (decided Nov 12, 2026). zcode, opencode and the custom command were removed; any other provider name is an error. Don't add providers back without asking.
 - AI settings (provider, model, timeout) are per machine since Nov 12, 2026. The Swift app keeps them in UserDefaults and hands them to the core with `Ledger::set_ai_settings`; the core never reads or writes the `ai` object in the database's settings row (the Node app still uses it).
-- The AI CLIs run with tools off, in an empty temp folder, with no shell (`core/src/ai.rs`): claude `--tools ""`, codex `--sandbox read-only` (it can still read files, but has no network or writes). Bank text in prompts goes through `prompt_text` (one line, no control characters, capped).
+- The AI CLIs run with tools off, in an empty temp folder, with no shell (`core/src/ai.rs`): claude `--tools ""`, codex `--sandbox read-only` (it can still read files, but has no network or writes). Bank text in prompts goes through `prompt_text` (one line, no control characters, capped). The prompt is written to the CLI's standard input, never passed as an argument (since Nov 13, 2026): arguments can be read by every account on the computer with `ps`. Keep it that way.
+- A database the app creates is owner-only (file 600, any folders it had to make 700; `db::open`, since Nov 13, 2026). An existing database or folder keeps its permissions, since it may be shared on purpose.
 - CSV export prefixes `'` to text cells that start with `=`, `+`, `-`, `@`, tab or carriage return (`csv_cell` in `core/src/lib.rs`).
 - Import also skips pending/posted twins: same account, amount and merchant key within 4 days, where one side is a Chase pending "POS DEBIT …" row. Node imported both copies.
 
