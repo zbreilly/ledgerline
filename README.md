@@ -110,7 +110,7 @@ To build the zip that goes on the Releases page:
 scripts/package-macos.sh
 ```
 
-This needs a [rustup](https://rustup.rs) toolchain with both Mac targets (`rustup target add aarch64-apple-darwin x86_64-apple-darwin`) and writes `dist/Ledgerline-<version>-macos-universal.zip`. It installs nothing. GitHub Actions runs the same script on every push (`.github/workflows/build.yml`) and publishes a release when a tag like `v0.1.0` is pushed.
+This needs a [rustup](https://rustup.rs) toolchain with both Mac targets (`rustup target add aarch64-apple-darwin x86_64-apple-darwin`) and writes `dist/Ledgerline-<version>-macos-universal.zip`. It installs nothing. GitHub Actions runs the same script on every push (`.github/workflows/build.yml`) and publishes a release when a tag like `v0.1.0` is pushed. The release notes are that version's section of [CHANGELOG.md](CHANGELOG.md), so write it before tagging; the build fails without it.
 
 ## Run
 
