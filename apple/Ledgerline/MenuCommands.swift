@@ -97,7 +97,17 @@ extension AppModel {
         panel.allowedContentTypes = [UTType(filenameExtension: ThemeStore.fileExtension) ?? .json, .json]
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        do { try ThemeStore.shared.importTheme(from: url) } catch { errorMessage = describe(error) }
+        do {
+            try ThemeStore.shared.importTheme(from: url)
+            let skipped = ThemeStore.shared.skippedArtOnLastImport
+            if skipped == 1 {
+                notice = "Imported. 1 image in that theme couldn't be used and was left out."
+            } else if skipped > 1 {
+                notice = "Imported. \(skipped) images in that theme couldn't be used and were left out."
+            }
+        } catch {
+            errorMessage = describe(error)
+        }
     }
 
     func exportAppearanceProfile() {

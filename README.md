@@ -52,6 +52,7 @@ cargo test
 | `core/src/lib.rs` | The `Ledger` object exported to Swift |
 | `apple/Ledgerline/` | SwiftUI screens |
 | `apple/Ledgerline/Theme.swift` | Appearance profiles: colors, fonts, layers, art, save/import/export |
+| `apple/Ledgerline/ArtSanitizer.swift` | Re-makes every theme image as a fresh PNG so shared themes can't carry hidden data or scripts |
 | `apple/Ledgerline/ThemeSurfaces.swift` | Draws themed layers, buttons and window outlines |
 | `apple/Ledgerline/HSVTrianglePicker.swift` | The hue-ring-and-triangle color picker |
 | `apple/Ledgerline/AppearanceView.swift` | The Appearance window |

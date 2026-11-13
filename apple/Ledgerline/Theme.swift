@@ -396,7 +396,8 @@ extension Theme {
 
     static func isAssetName(_ s: String) -> Bool {
         let parts = s.split(separator: ".", omittingEmptySubsequences: false)
-        guard parts.count == 2, parts[1] == "png" || parts[1] == "svg", parts[0].count == 32 else { return false }
+        // Stored art is always a PNG this app wrote (see ArtSanitizer); nothing else is ever loaded.
+        guard parts.count == 2, parts[1] == "png", parts[0].count == 32 else { return false }
         return parts[0].allSatisfy { "0123456789abcdef".contains($0) }
     }
 
@@ -648,33 +649,30 @@ final class ThemeStore: @unchecked Sendable {
 
     // MARK: Art
 
-    /// Copies a PNG or SVG into the asset folder and returns its name there.
+    /// Converts a PNG or SVG the user picked into a PNG of our own in the asset folder, and returns its name there.
     func addAsset(from url: URL) throws -> String {
         let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         guard size <= Self.maxAssetBytes else { throw ThemeError("That image is larger than 12 MB.") }
-        return try addAsset(Data(contentsOf: url))
+        return try addAsset(Data(contentsOf: url), allowSVG: true)
     }
 
-    func addAsset(_ data: Data) throws -> String {
-        guard data.count <= Self.maxAssetBytes else { throw ThemeError("That image is larger than 12 MB.") }
-        guard let ext = Self.imageKind(data) else { throw ThemeError("Only PNG and SVG images can be used.") }
-        guard Self.loadImage(data, ext: ext) != nil else { throw ThemeError("That image couldn't be read.") }
-        let hash = SHA256.hash(data: data).prefix(16).map { String(format: "%02x", $0) }.joined()
-        let name = "\(hash).\(ext)"
+    /// The source bytes are never stored. Only a PNG re-made from their pixels is (see `ArtSanitizer`),
+    /// so metadata, hidden chunks and anything tacked on after the image are gone before it reaches disk.
+    /// `allowSVG` is false for art that arrives inside a shared theme file.
+    func addAsset(_ data: Data, allowSVG: Bool) throws -> String {
+        let png = try ArtSanitizer.cleanPNG(from: data, allowSVG: allowSVG)
+        let name = Self.assetName(for: png)
         let dest = assetsDir.appendingPathComponent(name)
         if !FileManager.default.fileExists(atPath: dest.path) {
             try FileManager.default.createDirectory(at: assetsDir, withIntermediateDirectories: true)
-            try data.write(to: dest, options: .atomic)
+            try png.write(to: dest, options: .atomic)
         }
         assetRevision += 1
         return name
     }
 
-    /// Decides the type from the bytes, not the file name.
-    private static func imageKind(_ data: Data) -> String? {
-        if data.starts(with: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) { return "png" }
-        let head = String(decoding: data.prefix(4096), as: UTF8.self).lowercased()
-        return head.contains("<svg") ? "svg" : nil
+    private static func assetName(for png: Data) -> String {
+        SHA256.hash(data: png).prefix(16).map { String(format: "%02x", $0) }.joined() + ".png"
     }
 
     func image(_ name: String?) -> NSImage? {
@@ -682,51 +680,46 @@ final class ThemeStore: @unchecked Sendable {
         guard let name, Theme.isAssetName(name) else { return nil }
         if let cached = images[name] { return cached }
         guard let data = try? Data(contentsOf: assetsDir.appendingPathComponent(name)),
-              let img = Self.loadImage(data, ext: (name as NSString).pathExtension) else { return nil }
+              let img = Self.loadImage(data) else { return nil }
         images[name] = img
         return img
     }
 
-    /// PNGs load as they are. SVGs are drawn once into a bitmap so every fit mode treats them the same way.
-    private static func loadImage(_ data: Data, ext: String) -> NSImage? {
-        guard let src = NSImage(data: data), src.isValid else { return nil }
-        guard ext == "svg" else { return src.size.width > 0 && src.size.height > 0 ? src : nil }
-        var size = src.size
-        if size.width < 1 || size.height < 1 { size = NSSize(width: 256, height: 256) }
-        let longest = max(size.width, size.height)
-        let k = min(max(1536 / longest, 1), 6) * min(1, 4096 / longest)
-        let w = max(1, Int(size.width * k)), h = max(1, Int(size.height * k))
-        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: w, pixelsHigh: h, bitsPerSample: 8, samplesPerPixel: 4,
-                                         hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
-        // Set the point size before making the context, so drawing in points fills every pixel.
-        rep.size = size
-        guard let ctx = NSGraphicsContext(bitmapImageRep: rep) else { return nil }
-        NSGraphicsContext.saveGraphicsState()
-        NSGraphicsContext.current = ctx
-        src.draw(in: NSRect(origin: .zero, size: size))
-        NSGraphicsContext.restoreGraphicsState()
-        let out = NSImage(size: size)
-        out.addRepresentation(rep)
-        return out
+    /// Loads a stored PNG. The size is checked from the header first, in case a file was put in the folder by hand.
+    private static func loadImage(_ data: Data) -> NSImage? {
+        guard let px = ArtSanitizer.pngSize(data), ArtSanitizer.sizeIsAllowed(px.width, px.height),
+              let src = NSImage(data: data), src.isValid, src.size.width > 0, src.size.height > 0 else { return nil }
+        return src
     }
 
     // MARK: Import and export
 
-    /// One self-contained file: the theme plus its art, base64-encoded.
+    /// One self-contained file: the theme plus its art, base64-encoded. Every image is re-made
+    /// from its pixels on the way out, so a shared theme never carries anything but PNGs this app wrote.
     func export(to url: URL) throws {
-        guard var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(theme)) as? [String: Any] else {
+        guard let object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(theme)) as? [String: Any] else {
             throw ThemeError("Could not write the theme.")
         }
         var assets: [String: String] = [:]
+        var renamed: [String: String] = [:]
         for name in theme.assetNames {
-            if let data = try? Data(contentsOf: assetsDir.appendingPathComponent(name)) { assets[name] = data.base64EncodedString() }
+            guard let data = try? Data(contentsOf: assetsDir.appendingPathComponent(name)),
+                  let png = try? ArtSanitizer.cleanPNG(from: data, allowSVG: false) else { continue }
+            let clean = Self.assetName(for: png)
+            renamed[name] = clean
+            assets[clean] = png.base64EncodedString()
         }
-        object["assets"] = assets
-        try JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]).write(to: url, options: .atomic)
+        var out = Self.remapAssets(object, renamed)
+        out["assets"] = assets
+        try JSONSerialization.data(withJSONObject: out, options: [.prettyPrinted, .sortedKeys]).write(to: url, options: .atomic)
     }
 
-    /// Reads a theme file from anywhere. Nothing in it is trusted: values are checked, art is
-    /// re-identified from its bytes and stored under a name this app chooses, and it gets a new id.
+    /// How many images the last imported theme file carried that couldn't be used.
+    @ObservationIgnored private(set) var skippedArtOnLastImport = 0
+
+    /// Reads a theme file from anywhere. Nothing in it is trusted: values are checked, and it gets a new id.
+    /// Its art must be PNG; each image is decoded, re-made from its pixels and stored under a name this
+    /// app chooses, so none of the file's own image bytes are kept. Images that can't be used are left out.
     @discardableResult
     func importTheme(from url: URL) throws -> Theme {
         let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
@@ -737,13 +730,21 @@ final class ThemeStore: @unchecked Sendable {
         guard object["format"] as? String == Theme.formatName else { throw ThemeError("This isn't a Ledgerline theme file.") }
 
         var renamed: [String: String] = [:]
+        var skipped = 0
         if let assets = object["assets"] as? [String: Any] {
             guard assets.count <= 32 else { throw ThemeError("That theme has too many images.") }
             for (name, value) in assets {
-                guard let b64 = value as? String, let data = Data(base64Encoded: b64) else { continue }
-                if let stored = try? addAsset(data) { renamed[name] = stored }
+                // Base64 is 4 characters for every 3 bytes, so an oversized image is refused before it is decoded.
+                guard let b64 = value as? String, b64.utf8.count <= Self.maxAssetBytes / 3 * 4 + 8,
+                      let data = Data(base64Encoded: b64),
+                      let stored = try? addAsset(data, allowSVG: false) else {
+                    skipped += 1
+                    continue
+                }
+                renamed[name] = stored
             }
         }
+        skippedArtOnLastImport = skipped
         var raw = object
         raw.removeValue(forKey: "assets")
         raw["id"] = UUID().uuidString.lowercased()
