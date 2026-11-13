@@ -1,0 +1,86 @@
+# Builds the Mac app for distribution.
+#   Every push to main and every pull request: test the core, package a universal app, keep it as a run artifact.
+#   A tag like v0.1.0: the same, then publish the zip as a GitHub release.
+# The actions are pinned to exact commits so a changed tag can't alter what runs.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: Package Mac app
+    # Only where the code is public; a private copy of this repository does nothing.
+    if: ${{ !github.event.repository.private }}
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Rust targets
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup target add --toolchain stable aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Test the core
+        run: cargo +stable test -p ledgerline_core
+
+      - name: Check that the tag matches the app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' apple/Resources/Info.plist)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match the app version $version in apple/Resources/Info.plist." >&2
+            exit 1
+          fi
+
+      - name: Package
+        run: scripts/package-macos.sh
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Ledgerline-macos
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: macos
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: Ledgerline-macos
+          path: dist
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cat > notes.md <<'EOF'
+          Universal app for Apple Silicon and Intel Macs, macOS 14 or later.
+
+          **Install:** download the zip, open it, and move Ledgerline to Applications.
+
+          **First open:** the app is not notarized by Apple, so macOS blocks it the first time. Open it once, dismiss the warning, then go to System Settings > Privacy & Security and choose **Open Anyway**. You only need to do this once.
+
+          The `.sha256` file holds the checksum of the zip: `shasum -a 256 -c Ledgerline-*.zip.sha256`.
+          EOF
+          gh release create "$GITHUB_REF_NAME" dist/*.zip dist/*.sha256 \
+            --title "Ledgerline ${GITHUB_REF_NAME#v}" --notes-file notes.md --verify-tag

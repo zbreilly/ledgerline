@@ -7,6 +7,13 @@ Local-first personal finance for macOS. All data lives in one SQLite file on you
 
 Other platforms (Windows, Linux, iOS, Android) can reuse the same core through UniFFI's Kotlin and Python bindings or a C ABI.
 
+## Download
+
+Ready-made builds are on the [Releases page](../../releases): one universal app for Apple Silicon and Intel Macs, macOS 14 or later.
+
+1. Download the zip, open it, and move Ledgerline to Applications.
+2. The app is not notarized by Apple, so macOS blocks it the first time. Open it once, dismiss the warning, then go to System Settings > Privacy & Security and choose **Open Anyway**. You only need to do this once.
+
 ## Build
 
 Requirements: Rust (stable) and the Xcode command-line tools. macOS 14 or later.
@@ -16,6 +23,14 @@ scripts/build-macos.sh
 ```
 
 This produces `build.noindex/Ledgerline.app` and installs it into `/Applications` (set `LEDGERLINE_NO_INSTALL=1` to skip). Use `scripts/build-macos.sh debug` for a faster, unoptimized build.
+
+To build the zip that goes on the Releases page:
+
+```bash
+scripts/package-macos.sh
+```
+
+This needs a [rustup](https://rustup.rs) toolchain with both Mac targets (`rustup target add aarch64-apple-darwin x86_64-apple-darwin`) and writes `dist/Ledgerline-<version>-macos-universal.zip`. It installs nothing. GitHub Actions runs the same script on every push (`.github/workflows/build.yml`) and publishes a release when a tag like `v0.1.0` is pushed.
 
 ## Run
 

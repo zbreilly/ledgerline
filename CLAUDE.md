@@ -72,9 +72,11 @@ Swift only (it is presentation), in `apple/Ledgerline/Theme*.swift`, `HSVTriangl
 - Investment values are entered by hand; there's no brokerage import yet.
 - Publishing:
   - Never make the existing GitHub repo public: 6 of its first 18 commits contain the owner's personal details (decided Nov 13, 2026). Publish from a new repo that starts with one clean commit, and do not rewrite or force-push the private repo's history.
-  - The Homebrew Rust toolchain's standard library targets macOS 27, so the app may not run on macOS 14 to 26. Build releases with a rustup toolchain.
-  - Add an Xcode project for signing, notarization and a hardened runtime.
-  - Build a universal binary (add `x86_64-apple-darwin`).
+  - **Distribution builds (Nov 13, 2026):** `scripts/package-macos.sh` builds a universal (arm64 + x86_64) app for macOS 14+, ad-hoc signed, and zips it to `dist/`. `.github/workflows/build.yml` runs it on the `xcode-27` runner for every push and pull request, and publishes a GitHub release when a `v<version>` tag is pushed (the tag must match `CFBundleShortVersionString`). Release binaries come from CI, not from a developer's Mac.
+    - The script names rustup's `cargo` and `rustc` by full path. `rustup run stable cargo` is not enough here: cargo then runs Homebrew's `rustc` from PATH, whose standard library targets macOS 27. The script fails if the linker reports objects built for a newer macOS.
+    - It remaps the home and project folders out of the binary (`--remap-path-prefix`, `-file-prefix-map`), strips symbols, and refuses to package if the home folder path is still in the app. `scripts/build-macos.sh` does none of this; don't hand out its output.
+    - Locally only `aarch64-apple-darwin` is installed, so test with `LEDGERLINE_ARCHS=arm64 scripts/package-macos.sh`.
+  - Still not notarized (no Developer ID; a certificate would carry the owner's legal name). Users must allow the app once in System Settings > Privacy & Security.
 - Import works on one file at a time. There is no undo for single-transaction edits.
 
 ## Menu bar (Nov 13, 2026)

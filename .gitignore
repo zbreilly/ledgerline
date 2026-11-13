@@ -9,3 +9,4 @@ CLAUDE.local.md
 *.db-wal
 *.db-shm
 *.csv
+/dist
