@@ -7,6 +7,80 @@ Local-first personal finance for macOS. All data lives in one SQLite file on you
 
 Other platforms (Windows, Linux, iOS, Android) can reuse the same core through UniFFI's Kotlin and Python bindings or a C ABI.
 
+## Features
+
+### Private by design
+
+- Everything is in one SQLite file that you choose. There is no account, no sync service and no server.
+- The app makes no network connections of its own. The only things that can send data anywhere are the two optional AI features below, and only when you start them: they hand text to an AI command-line tool you have installed.
+
+### Importing
+
+- **Any bank's CSV.** Columns are detected from the header and you can adjust them before importing. Separate debit and credit columns are handled.
+- **No double counting.** Re-importing an overlapping export skips what's already there, including a purchase the bank listed once as pending and again as posted with a new date and description.
+- **Transfers are recognized** (card payments, moves between your own accounts) and left out of spending reports.
+- **Balances from the bank file.** If the export has a running-balance column, the account's balance is set from it.
+- Drag a CSV onto the Dock icon to go straight to the import preview.
+
+### Categorizing
+
+- **Rules**, in priority order: contains, exact, starts with, regular expression or same merchant, with optional amount limits.
+- **Merchant memory.** An uncategorized transaction takes the category you last gave that merchant.
+- **Learn from My Categories** turns your categorized history into rules, and re-categorizing a transaction updates the rule for that merchant.
+- **AI Sort** (optional) sends the descriptions and amounts of uncategorized transactions to the `claude` or `codex` command-line tool on your Mac, with its tools turned off. By default it may only choose from your existing categories.
+- **AI Category Designer** (optional) sends your top merchants to the same tool and proposes categories. Existing categories are kept, and you choose which new ones to add.
+- Categories and subcategories are yours to edit. Restoring the stock list only happens when you press the button.
+
+### Transactions
+
+- Search, filter by account, category, subcategory, type and transfers, sort by column, and step through months.
+- **Split** one charge across several categories. Splits survive re-importing the same file.
+- **Count a transaction toward another month**, for example a paycheck that lands on the 1st.
+- Categorize many rows at once, and export to CSV.
+
+### Dashboard and planning
+
+- Cash on hand, money in and out, net cash flow, savings rate and runway, with a six-month cash-flow chart, category breakdown, top merchants and recent transactions.
+- **Budgets** per category or subcategory, with budget versus actual and what's left as you edit.
+- **Net worth**: cash plus investments, minus debts.
+
+### Cash flow
+
+- **Bills and income** on any schedule (weekly, every two weeks, monthly, quarterly, every six months, yearly or one time), found in your history or added by hand.
+- **A calendar** showing what's due, what was paid and what was missed, with a projected cash balance for each day and the lowest point ahead.
+- **Pay periods**: what each paycheck has to cover and what's left over, including months with three paychecks.
+- Day-to-day spending from your budgets is spread across the month in the projection.
+
+### Debt
+
+- Loans, cards and buy-now-pay-later plans, with a balance you enter or one that follows a linked account.
+- Payoff date, interest ahead and payments left for each debt.
+- **Payoff plans**: minimums only, avalanche (highest rate first) or snowball (smallest balance first), with an extra amount per month.
+- **Find Debts** suggests debts from the payments in your transactions.
+
+### Investments
+
+- Brokerage, retirement and HSA accounts with dated values you enter, change over time, and optional details such as employer match.
+
+### Appearance (theming)
+
+Open it from **Ledgerline › Appearance…**. The default profile, System, is the ordinary macOS look; nothing changes until you pick or make another.
+
+- **Profiles.** Built in: All White, All Black, High Contrast Dark, High Contrast Light, Black with Neon and White with Neon. Editing a built-in makes a copy you can save under your own name. Edits show at once in every window.
+- **Colors** for text, accent and status (money in, money owed, warnings, information).
+- **Fonts** for headings and body text, from the system styles or any installed family, with a size scale.
+- **Four layers**: window, sidebar, panels and cards. Each has a fill, an outline (color, width, corner radius) and a glow for a neon edge.
+- **Two button skins**: standard buttons and the main action button, each with its own fill, outline and text color.
+- **Art** on any layer or button, from a PNG or SVG: fill, fit, stretch, tile or frame (corners stay put while edges stretch). Drag the image into place in the editor. Buttons can have separate hover and pressed images.
+- **A color picker** with a hue ring around a triangle, HSB, RGB and hex fields, opacity, an eyedropper and the theme's own colors. The same picker is used for account and category colors.
+- **Share a theme** as one `.ledgerlinetheme` file that includes its art.
+- **Shared themes are safe to open.** Every value is checked, and every image is decoded and re-made as a new PNG before it is stored, shown or exported, so a theme can't carry scripts, metadata or data tacked onto an image. SVGs are accepted only from your own files, must be self-contained, and are converted to PNG.
+- Themes are saved per Mac, not in the database. Menus, alerts and open/save panels are drawn by macOS and only follow light or dark.
+
+### Menus and shortcuts
+
+- Every action has a menu item, with shortcuts for the pages (⌘1 to ⌘9), month navigation, import, export and finding uncategorized transactions.
+
 ## Download
 
 Ready-made builds are on the [Releases page](../../releases): one universal app for Apple Silicon and Intel Macs, macOS 14 or later.
