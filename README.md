@@ -2,10 +2,27 @@
 
 Local-first personal finance for macOS. All data lives in one SQLite file on your Mac.
 
+It comes with a full [theme engine](#theme-engine): restyle every window with your own colors, fonts, layers, button skins and art, then share the result as one file.
+
 - **Rust core** (`core/`): CSV import, duplicate detection, transfer detection, rules, merchant memory, reports, and AI categorization. Shared by every front end.
 - **SwiftUI app** (`apple/`): native macOS UI with Swift Charts. It talks to the core through bindings that [UniFFI](https://mozilla.github.io/uniffi-rs/) generates.
 
 Other platforms (Windows, Linux, iOS, Android) can reuse the same core through UniFFI's Kotlin and Python bindings or a C ABI.
+
+## Theme engine
+
+Ledgerline can look the way you want it to. Open **Ledgerline › Appearance…** to pick a profile or build your own; edits show at once in every window. The default profile, System, is the ordinary macOS look, and nothing changes until you pick or make another.
+
+- **Profiles.** Built in: All White, All Black, High Contrast Dark, High Contrast Light, Black with Neon and White with Neon. Editing a built-in makes a copy you can save under your own name.
+- **Colors** for text, accent and status (money in, money owed, warnings, information).
+- **Fonts** for headings and body text, from the system styles or any installed family, with a size scale.
+- **Four layers**: window, sidebar, panels and cards. Each has a fill, an outline (color, width, corner radius) and a glow for a neon edge.
+- **Two button skins**: standard buttons and the main action button, each with its own fill, outline and text color.
+- **Art** on any layer or button, from a PNG or SVG: fill, fit, stretch, tile or frame (corners stay put while edges stretch). Drag the image into place in the editor. Buttons can have separate hover and pressed images.
+- **A color picker** with a hue ring around a triangle, HSB, RGB and hex fields, opacity, an eyedropper and the theme's own colors. The same picker is used for account and category colors.
+- **Share a theme** as one `.ledgerlinetheme` file that includes its art.
+- **Shared themes are safe to open.** Every value is checked, and every image is decoded and re-made as a new PNG before it is stored, shown or exported, so a theme can't carry scripts, metadata or data tacked onto an image. SVGs are accepted only from your own files, must be self-contained, and are converted to PNG.
+- Themes are saved per Mac, not in the database. Menus, alerts and open/save panels are drawn by macOS and only follow light or dark.
 
 ## Features
 
@@ -62,20 +79,9 @@ Other platforms (Windows, Linux, iOS, Android) can reuse the same core through U
 
 - Brokerage, retirement and HSA accounts with dated values you enter, change over time, and optional details such as employer match.
 
-### Appearance (theming)
+### Appearance
 
-Open it from **Ledgerline › Appearance…**. The default profile, System, is the ordinary macOS look; nothing changes until you pick or make another.
-
-- **Profiles.** Built in: All White, All Black, High Contrast Dark, High Contrast Light, Black with Neon and White with Neon. Editing a built-in makes a copy you can save under your own name. Edits show at once in every window.
-- **Colors** for text, accent and status (money in, money owed, warnings, information).
-- **Fonts** for headings and body text, from the system styles or any installed family, with a size scale.
-- **Four layers**: window, sidebar, panels and cards. Each has a fill, an outline (color, width, corner radius) and a glow for a neon edge.
-- **Two button skins**: standard buttons and the main action button, each with its own fill, outline and text color.
-- **Art** on any layer or button, from a PNG or SVG: fill, fit, stretch, tile or frame (corners stay put while edges stretch). Drag the image into place in the editor. Buttons can have separate hover and pressed images.
-- **A color picker** with a hue ring around a triangle, HSB, RGB and hex fields, opacity, an eyedropper and the theme's own colors. The same picker is used for account and category colors.
-- **Share a theme** as one `.ledgerlinetheme` file that includes its art.
-- **Shared themes are safe to open.** Every value is checked, and every image is decoded and re-made as a new PNG before it is stored, shown or exported, so a theme can't carry scripts, metadata or data tacked onto an image. SVGs are accepted only from your own files, must be self-contained, and are converted to PNG.
-- Themes are saved per Mac, not in the database. Menus, alerts and open/save panels are drawn by macOS and only follow light or dark.
+- Colors, fonts, layers, button skins and art are all yours to change. See [Theme engine](#theme-engine) above.
 
 ### Menus and shortcuts
 
