@@ -1,0 +1,11 @@
+/target
+/build
+/build.noindex
+/apple/Generated
+.DS_Store
+# Private notes and data: never check these in
+CLAUDE.local.md
+*.db
+*.db-wal
+*.db-shm
+*.csv
