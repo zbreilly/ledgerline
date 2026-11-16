@@ -1,0 +1,78 @@
+{
+  "accent" : "#1f4e8c",
+  "assets" : {
+    "2f844b01a8ec1f3a264acb402b158951.png" : "iVBORw0KGgoAAAANSUhEUgAAADAAAAAeCAYAAABqpJ3BAAAAAXNSR0IArs4c6QAAAHhlWElmTU0AKgAAAAgABAEaAAUAAAABAAAAPgEbAAUAAAABAAAARgEoAAMAAAABAAIAAIdpAAQAAAABAAAATgAAAAAAAABIAAAAAQAAAEgAAAABAAOgAQADAAAAAQABAACgAgAEAAAAAQAAADCgAwAEAAAAAQAAAB4AAAAAlknJXgAAAAlwSFlzAAALEwAACxMBAJqcGAAAAD5JREFUWAnt0DENAEAIwEDQ+wtikIO4X7FAclXQXIQIECBAgAABAgQIECBAgAABAgQIECBA4JxAVs87d72GP7RhAi1hqu8AAAAAAElFTkSuQmCC"
+  },
+  "bodyFont" : "Charter",
+  "button" : {
+    "surface" : {
+      "fill" : "#fffdf6",
+      "glow" : 0,
+      "outline" : "#bfb398",
+      "outlineWidth" : 1,
+      "radius" : 4
+    },
+    "text" : "#2a2925"
+  },
+  "card" : {
+    "fill" : "#f7f2e6",
+    "glow" : 0,
+    "outline" : "#ddd3bd",
+    "outlineWidth" : 1,
+    "radius" : 4
+  },
+  "fontScale" : 1,
+  "format" : "ledgerline-theme",
+  "headingFont" : "Baskerville",
+  "id" : "184aed52-1de4-44a4-af9d-0a4f3a48b3aa",
+  "info" : "#1f4e8c",
+  "name" : "Ledger Paper",
+  "negative" : "#b2362b",
+  "panel" : {
+    "fill" : "#fffdf6e6",
+    "glow" : 0,
+    "outline" : "#cfc4ac",
+    "outlineWidth" : 1,
+    "radius" : 6
+  },
+  "positive" : "#2c7a4d",
+  "prominentButton" : {
+    "surface" : {
+      "fill" : "#1f4e8c",
+      "glow" : 0,
+      "outline" : "#1f4e8c",
+      "outlineWidth" : 0,
+      "radius" : 4
+    },
+    "text" : "#ffffff"
+  },
+  "sidebar" : {
+    "fill" : "#ece5d4",
+    "glow" : 0,
+    "outline" : "#d6ccb6",
+    "outlineWidth" : 1,
+    "radius" : 0
+  },
+  "text" : "#2a2925",
+  "textSecondary" : "#69645a",
+  "textTertiary" : "#989283",
+  "version" : 1,
+  "warning" : "#a3640b",
+  "window" : {
+    "art" : {
+      "asset" : "2f844b01a8ec1f3a264acb402b158951.png",
+      "mode" : "tile",
+      "opacity" : 1,
+      "replacesFill" : false,
+      "scale" : 1,
+      "slice" : 12,
+      "x" : 0,
+      "y" : 0
+    },
+    "fill" : "#f5f0e4",
+    "glow" : 0,
+    "outline" : "#cfc4ac",
+    "outlineWidth" : 1,
+    "radius" : 16
+  }
+}

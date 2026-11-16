@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4F6BFF"/><stop offset="1" stop-color="#11B4E6"/>
+    </linearGradient>
+    <radialGradient id="hi" cx="0.3" cy="0.05" r="0.9">
+      <stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C9FFE2"/><stop offset="1" stop-color="#4BE59B"/>
+    </linearGradient>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#06215c" flood-opacity=".35"/>
+    </filter>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#0a2a7a" flood-opacity=".30"/>
+    </filter>
+  </defs>
+  <g filter="url(#sh)"><rect x="100" y="100" width="824" height="824" rx="186" fill="url(#bg)"/></g>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#hi)"/>
+  <g filter="url(#soft)">
+    <!-- the L: its stem and foot are the chart's two axes -->
+    <path d="M268 286 a48 48 0 0 1 96 0 V678 H726 a48 48 0 0 1 0 96 H316 a48 48 0 0 1 -48 -48 Z" fill="#fff"/>
+    <rect x="414" y="522" width="82" height="118" rx="24" fill="#fff" fill-opacity=".55"/>
+    <rect x="530" y="420" width="82" height="220" rx="24" fill="#fff" fill-opacity=".78"/>
+    <rect x="646" y="300" width="82" height="340" rx="24" fill="url(#bar)"/>
+  </g>
+</svg>
