@@ -6,7 +6,7 @@ What changed in each release, newest first. The notes on a GitHub release are ta
 
 A new license, a new icon and ready-made themes. The app works the same as 0.1.1.
 
-- **License.** Ledgerline is now under the GNU Affero General Public License, version 3 only (AGPL-3.0-only). The license text is inside the app, in `Contents/Resources/LICENSE`. Versions 0.1.0 and 0.1.1 stay under the MIT license they were released with.
+- **License.** Ledgerline is now under the GNU Affero General Public License, version 3 only (AGPL-3.0-only). The license text is inside the app, in `Contents/Resources/LICENSE`.
 - **New app icon.** An L that doubles as a rising bar chart.
 - **Ready-made themes.** Synthwave, Midnight Gold and Ledger Paper are in the `themes` folder on the project page. Download one and open it with File › Import Appearance Profile….
 

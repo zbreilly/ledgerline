@@ -5,7 +5,7 @@
 - No WebKit or web UI anywhere.
 - The SQLite schema must stay compatible with the Node app in `../ledgerline/` (same tables, same JSON settings shape, same duplicate hash). Both apps can open the same file.
 - "Restore defaults" (stock taxonomy) runs only from an explicit button. Seeding happens only when the `categories` table is empty.
-- License is **AGPL-3.0-only** (the user's decision, Nov 16, 2026, to match Open Download Manager). Versions 0.1.0 and 0.1.1 went out under MIT and stay MIT. Don't change the license or add code under an incompatible one without asking.
+- License is **AGPL-3.0-only** (the user's decision, Nov 16, 2026, to match Open Download Manager). Don't change the license or add code under an incompatible one without asking.
 
 ## Build and test
 - `scripts/build-macos.sh` runs `cargo build`, then `uniffi-bindgen` (Swift output to `apple/Generated/`), then `swiftc` straight to `build.noindex/Ledgerline.app`. There is no Xcode project yet.
@@ -74,7 +74,7 @@ Swift only (it is presentation), in `apple/Ledgerline/Theme*.swift`, `HSVTriangl
 - Investment values are entered by hand; there's no brokerage import yet.
 - Publishing:
   - Never make the private GitHub repo (the one this folder pushes to) public: 6 of its first 18 commits contain the owner's personal details (decided Nov 13, 2026). Do not rewrite or force-push its history.
-  - **The public repo** is a separate folder, `../ledgerline-public/`, with its own history that started from one clean commit. It was started over on Nov 16, 2026 (the owner's decision) so that its whole history is AGPL-3.0-only; the earlier public copy, which held the MIT versions, is now private, and stays private unless the owner says otherwise. Its local git config sets the commit identity to the project name with a non-personal address; never commit there from a folder without that config, and give commits and tags UTC dates. To publish, copy this folder's non-ignored files across, check them for personal details, and commit there.
+  - **The public repo** is a separate folder, `../ledgerline-public/`, with its own history that started from one clean commit. It was started over on Nov 16, 2026 (the owner's decision) so that its whole history is AGPL-3.0-only; the earlier public copy is now private, and stays private unless the owner says otherwise. Its local git config sets the commit identity to the project name with a non-personal address; never commit there from a folder without that config, and give commits and tags UTC dates. To publish, copy this folder's non-ignored files across, check them for personal details, and commit there.
   - **`main` on the public repo is protected** (Nov 13, 2026): every change needs a pull request and a passing `Package Mac app` check, history must stay linear, and force pushes and deletion are blocked, for admins too. Release tags (`v*`) can't be moved or deleted. Actions may only run GitHub's own actions, pinned to a commit, with a read-only token by default.
     - To land a change: push a branch, open a pull request, wait for the check, then fast-forward `main` to the pull request's head from the command line (`git push origin <branch>:main`). GitHub accepts that push because the commits belong to a pull request that passed, and it keeps the neutral commit identity.
     - Don't use the web merge button: it rewrites the commits with the merging account's name on them.

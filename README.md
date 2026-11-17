@@ -229,6 +229,6 @@ cargo test
 
 Ledgerline is free software under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only). You may use, study, modify and share it. Any version you distribute, or run as a network service, must be released under the same license with its complete source code.
 
-Copyright (c) 2026 The Ledgerline authors. Versions 0.1.0 and 0.1.1 were released under the MIT license and stay under it. Later versions are AGPL-3.0-only.
+Copyright (c) 2026 The Ledgerline authors.
 
 The Rust dependencies keep their own licenses (MIT, Apache-2.0, Zlib, MPL-2.0 and similar).
